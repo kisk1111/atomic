@@ -108,6 +108,22 @@
   .games-scroll::-webkit-scrollbar { width: 10px; }
   .games-scroll::-webkit-scrollbar-thumb { background: var(--border); border-radius:5px; }
 
+  /* calendar heatmap */
+  .cal-wrap { overflow-x: auto; padding-bottom: 4px; }
+  .cal-grid { display: grid; grid-template-rows: repeat(7, 13px);
+    grid-auto-flow: column; grid-auto-columns: 13px; gap: 3px; padding: 4px 2px; }
+  .cal-months { display: grid; grid-template-columns: repeat(12, 1fr);
+    font-size: 11px; color: var(--dim); margin-bottom: 6px; padding: 0 2px; }
+  .cal-cell { width: 13px; height: 13px; border-radius: 3px; background: var(--panel2); }
+  .cal-cell.pad { visibility: hidden; }
+  .cal-cell.l1 { background: rgba(122,162,247,.25); }
+  .cal-cell.l2 { background: rgba(122,162,247,.5); }
+  .cal-cell.l3 { background: rgba(122,162,247,.75); }
+  .cal-cell.l4 { background: #7aa2f7; }
+  .cal-legend { display:flex; gap:6px; align-items:center; color:var(--dim);
+    font-size: 11px; margin-top:10px; }
+  .cal-legend .cal-cell { display:inline-block; }
+
   .muted { color: var(--dim); font-size:12px; }
   .hint { font-size:12px; color:var(--dim); margin: 6px 0 10px; }
   .empty { padding: 40px; text-align:center; color: var(--dim); }
@@ -144,6 +160,7 @@
   <div class="nav-tabs" id="navTabs">
     <button data-s="overview" class="on">Overview</button>
     <button data-s="opponents">Opponents</button>
+    <button data-s="streak">Streak</button>
     <button data-s="games">Games</button>
     <button data-s="upload">Upload</button>
   </div>
@@ -196,6 +213,41 @@
     <div class="grid row-2" style="margin-bottom:16px;">
       <div class="card"><h2>Worst losses (by opp ELO)</h2><table id="tblWorstLoss"></table></div>
       <div class="card"><h2>Biggest point swings</h2><table id="tblSwings"></table></div>
+    </div>
+  </section>
+
+  <!-- ====== STREAK ====== -->
+  <section class="section" data-s="streak">
+    <div class="grid row-3" style="margin-bottom:16px;">
+      <div class="card kpi">
+        <h2>Current streak</h2>
+        <div class="v" id="kpiCurStreak">—</div>
+        <div class="delta" id="kpiCurStreakSub">days in a row</div>
+      </div>
+      <div class="card kpi">
+        <h2>Longest streak</h2>
+        <div class="v" id="kpiLongStreak">—</div>
+        <div class="delta" id="kpiLongStreakSub">days</div>
+      </div>
+      <div class="card kpi">
+        <h2>Active days</h2>
+        <div class="v" id="kpiActiveDays">—</div>
+        <div class="delta">total days with atleast 1 game</div>
+      </div>
+    </div>
+    <div class="card">
+      <h2>Activity · <span id="calYear"></span></h2>
+      <div class="cal-months" id="calMonths"></div>
+      <div class="cal-wrap"><div class="cal-grid" id="calendar"></div></div>
+      <div class="cal-legend">
+        less
+        <span class="cal-cell"></span>
+        <span class="cal-cell l1"></span>
+        <span class="cal-cell l2"></span>
+        <span class="cal-cell l3"></span>
+        <span class="cal-cell l4"></span>
+        more
+      </div>
     </div>
   </section>
 
@@ -279,6 +331,41 @@ function wdl(games) {
   return {w,d,l,total:w+d+l};
 }
 
+function localDateKey(iso) {
+  const d = new Date(iso);
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+}
+
+function streakStats(games) {
+  const days = [...new Set(games.map(g => localDateKey(g.played_at)))].sort();
+  if (!days.length) return { current: 0, longest: 0, total: 0, status: "no games yet" };
+  const dayMs = 86400000;
+  const parse = s => new Date(s + "T00:00:00");
+
+  let longest = 1, run = 1;
+  for (let i = 1; i < days.length; i++) {
+    const diff = Math.round((parse(days[i]) - parse(days[i-1])) / dayMs);
+    if (diff === 1) { run++; longest = Math.max(longest, run); }
+    else run = 1;
+  }
+
+  const today = localDateKey(new Date().toISOString());
+  const yest  = localDateKey(new Date(Date.now() - dayMs).toISOString());
+  const lastDay = days[days.length - 1];
+  let current = 0, status = "";
+  if (lastDay === today || lastDay === yest) {
+    current = 1;
+    for (let i = days.length - 2; i >= 0; i--) {
+      const diff = Math.round((parse(days[i+1]) - parse(days[i])) / dayMs);
+      if (diff === 1) current++; else break;
+    }
+    status = lastDay === today ? "playing today" : "don't break it today";
+  } else {
+    status = "streak broken";
+  }
+  return { current, longest, total: days.length, status };
+}
+
 function groupBy(arr, keyFn) {
   const m = new Map();
   for (const x of arr) {
@@ -310,7 +397,7 @@ function fmtDtShort(iso) {
 }
 function destroyChart(k) { if (charts[k]) { charts[k].destroy(); delete charts[k]; } }
 
-function renderKpis(all, scoped) {
+function renderKpis(all, scoped, streak) {
   const el = document.getElementById("kpis");
   const stats = wdl(scoped);
   const last = all[all.length - 1];
@@ -342,6 +429,11 @@ function renderKpis(all, scoped) {
       <h2>Avg opponent</h2>
       <div class="v">${avgOppRating || "—"}</div>
       <div class="delta">rating</div>
+    </div>
+    <div class="card kpi">
+      <h2>Play streak</h2>
+      <div class="v">${streak.current}</div>
+      <div class="delta">${streak.status}</div>
     </div>
     <div class="card kpi" style="grid-column: span 2;">
       <h2>Win / Draw / Loss</h2>
@@ -519,6 +611,51 @@ function renderOpponentTables(games) {
     ]);
 }
 
+function renderStreakSection(games, streak) {
+  document.getElementById("kpiCurStreak").textContent = streak.current;
+  document.getElementById("kpiCurStreakSub").textContent = streak.status;
+  document.getElementById("kpiLongStreak").textContent = streak.longest;
+  document.getElementById("kpiActiveDays").textContent = streak.total;
+  renderCalendar(games);
+}
+
+function renderCalendar(games) {
+  const year = new Date().getFullYear();
+  document.getElementById("calYear").textContent = year;
+
+  const counts = new Map();
+  for (const g of games) {
+    const d = localDateKey(g.played_at);
+    if (!d.startsWith(year + "-")) continue;
+    counts.set(d, (counts.get(d) || 0) + 1);
+  }
+
+  const start = new Date(year, 0, 1);
+  const end = new Date(year, 11, 31);
+  const padStart = start.getDay(); // 0=Sun..6=Sat
+
+  const cells = [];
+  for (let i = 0; i < padStart; i++) cells.push(`<div class="cal-cell pad"></div>`);
+  for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+    const iso = localDateKey(d.toISOString());
+    const n = counts.get(iso) || 0;
+    let lvl = 0;
+    if (n >= 1) lvl = 1;
+    if (n >= 3) lvl = 2;
+    if (n >= 6) lvl = 3;
+    if (n >= 10) lvl = 4;
+    const label = new Date(iso + "T00:00:00").toLocaleDateString(undefined,
+      {month:"short", day:"numeric", year:"numeric"});
+    cells.push(`<div class="cal-cell l${lvl}" title="${label}: ${n} game${n===1?'':'s'}"></div>`);
+  }
+  document.getElementById("calendar").innerHTML = cells.join("");
+
+  // Month labels across the top (one cell per month, centered-ish)
+  const months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  document.getElementById("calMonths").innerHTML =
+    months.map(m => `<span>${m}</span>`).join("");
+}
+
 // ---------- games table (sortable) ----------
 const GAMES_COLS = [
   { key: "played_at",       h: "Date",      sortable: true,
@@ -588,12 +725,14 @@ function render() {
   document.getElementById("empty").style.display = GAMES.length ? "none" : "block";
   setSubtitle(GAMES);
   const scoped = filterByPeriod(GAMES, currentPeriod);
-  renderKpis(GAMES, scoped);
-  renderEloChart(GAMES);
+  const streak = streakStats(GAMES);
+  renderKpis(GAMES, scoped, streak);
+  renderEloChart(scoped);
   renderPtsChart(scoped);
   renderDailyChart(scoped);
   renderColorChart(scoped);
   renderOpponentTables(scoped);
+  renderStreakSection(GAMES, streak);
   renderGamesTable(GAMES);  // Games tab always shows everything, sorted as user chose
 }
 
