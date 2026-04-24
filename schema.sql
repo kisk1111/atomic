@@ -19,7 +19,7 @@ CREATE TABLE IF NOT EXISTS games (
   white_player    TEXT,
   black_player    TEXT,
   created_at      TIMESTAMP NOT NULL DEFAULT NOW(),
-  UNIQUE (played_at, user_name, opponent_name)
+  UNIQUE (played_at)
 );
 
 CREATE INDEX IF NOT EXISTS games_played_at_idx ON games (played_at DESC);
