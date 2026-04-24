@@ -16,25 +16,35 @@
   html, body { margin:0; padding:0; background:var(--bg); color:var(--ink);
     font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
   a { color: var(--accent); }
-  header { padding: 20px 28px; display:flex; justify-content:space-between;
-    align-items:center; border-bottom:1px solid var(--border); background: var(--panel); }
+  header { padding: 18px 28px 0; border-bottom:1px solid var(--border); background: var(--panel); }
+  .header-top { display:flex; justify-content:space-between; align-items:center; padding-bottom: 14px; }
   header h1 { margin:0; font-size:22px; letter-spacing:.3px; }
   header .sub { color: var(--dim); font-size:13px; margin-top:4px; }
+  .nav-tabs { display:flex; gap:4px; }
+  .nav-tabs button { background:transparent; border:0; color:var(--dim);
+    padding:10px 16px; cursor:pointer; font-size:13px; font-weight:500;
+    border-bottom:2px solid transparent; margin-bottom:-1px; }
+  .nav-tabs button:hover { color: var(--ink); }
+  .nav-tabs button.on { color: var(--ink); border-bottom-color: var(--accent); }
+
   .container { max-width: 1400px; margin: 0 auto; padding: 20px 28px 80px; }
   .grid { display:grid; gap:16px; }
   .kpis { grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); }
   .row-2 { grid-template-columns: 1fr 1fr; }
-  .row-4 { grid-template-columns: repeat(4, 1fr); }
-  @media (max-width: 1000px) { .row-2, .row-4 { grid-template-columns: 1fr; } }
+  .row-3 { grid-template-columns: repeat(3, 1fr); }
+  @media (max-width: 1000px) { .row-2, .row-3 { grid-template-columns: 1fr; } }
+
   .card { background: var(--panel); border:1px solid var(--border);
-    border-radius:10px; padding:16px 18px; }
+    border-radius:10px; padding:16px 18px; overflow: hidden; }
   .card h2 { font-size:13px; font-weight:600; margin:0 0 10px; color:var(--dim);
     text-transform:uppercase; letter-spacing:1px; }
+
   .kpi .v { font-size:28px; font-weight:600; }
   .kpi .v small { font-size:14px; color:var(--dim); font-weight:400; margin-left:6px; }
   .kpi .delta { font-size:12px; color:var(--dim); margin-top:4px; }
   .kpi .delta.up { color:var(--win); }
   .kpi .delta.down { color:var(--loss); }
+
   .wdl-bar { display:flex; height:10px; border-radius:5px; overflow:hidden;
     margin-top:8px; background: var(--panel2); }
   .wdl-bar span { display:block; height:100%; }
@@ -43,58 +53,99 @@
   .wdl-bar .l { background: var(--loss); }
   .wdl-legend { display:flex; gap:10px; font-size:12px; color:var(--dim); margin-top:6px; }
   .wdl-legend b { color: var(--ink); font-weight:600; }
-  table { width:100%; border-collapse:collapse; font-size:13px; }
-  th, td { text-align:left; padding:6px 8px; border-bottom:1px solid var(--border); }
-  th { color:var(--dim); font-weight:500; position: sticky; top: 0; background: var(--panel); }
+
+  table { width:100%; border-collapse:collapse; font-size:13px; table-layout: fixed; }
+  th, td { text-align:left; padding:6px 8px; border-bottom:1px solid var(--border);
+    white-space: nowrap; overflow:hidden; text-overflow: ellipsis; }
+  th { color:var(--dim); font-weight:500; background: var(--panel); }
   td.r, th.r { text-align:right; }
+  tr:last-child td { border-bottom: none; }
+
+  .games-table th { cursor: pointer; user-select:none; position: sticky; top:0; z-index:1; }
+  .games-table th:hover { color: var(--ink); }
+  .games-table th .arr { color: var(--accent); margin-left:4px; }
+
   .pill { display:inline-block; padding:1px 8px; border-radius:10px; font-size:11px;
     font-weight:600; }
   .pill.win { background:rgba(158,206,106,.15); color:var(--win); }
   .pill.loss { background:rgba(247,118,142,.15); color:var(--loss); }
   .pill.draw { background:rgba(224,175,104,.15); color:var(--draw); }
+
   .color-dot { display:inline-block; width:10px; height:10px; border-radius:2px;
     vertical-align:middle; border:1px solid var(--border); }
   .color-dot.white { background: var(--white-sq); }
   .color-dot.black { background: var(--black-sq); }
-  .tabs { display:inline-flex; background: var(--panel2); border-radius:8px;
+
+  .period-tabs { display:inline-flex; background: var(--panel2); border-radius:8px;
     padding:3px; gap:2px; }
-  .tabs button { background:transparent; border:0; color:var(--dim); padding:6px 12px;
+  .period-tabs button { background:transparent; border:0; color:var(--dim); padding:6px 12px;
     border-radius:6px; cursor:pointer; font-size:12px; font-weight:500; }
-  .tabs button.on { background: var(--panel); color: var(--ink); }
+  .period-tabs button.on { background: var(--panel); color: var(--ink); }
+
+  .section { display:none; }
+  .section.on { display:block; }
+  .section-head { display:flex; justify-content:space-between; align-items:center;
+    margin-bottom:14px; flex-wrap:wrap; gap:10px; }
+  .section-head h3 { margin:0; font-size:16px; font-weight:600; }
+  .section-head .muted { color: var(--dim); font-size: 13px; font-weight: 400; }
+
   textarea, input[type=password] { width:100%; background: var(--panel2);
     border:1px solid var(--border); color:var(--ink); border-radius:8px; padding:10px;
     font-family: ui-monospace, Consolas, monospace; font-size:13px; }
-  textarea { min-height:140px; resize:vertical; }
+  textarea { min-height:160px; resize:vertical; }
   button.btn { background: var(--accent); color:#0b1020; border:0;
     padding:8px 14px; border-radius:8px; font-weight:600; cursor:pointer; font-size:13px; }
   button.btn.ghost { background: transparent; color: var(--ink); border:1px solid var(--border); }
   button.btn:disabled { opacity:.5; cursor:not-allowed; }
+
   .toolbar { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
   .toolbar .spacer { flex:1; }
+
   .chart-wrap { position:relative; height: 280px; }
-  .scroll { max-height: 360px; overflow:auto; }
+  .chart-wrap.tall { height: 340px; }
+
+  .games-scroll { max-height: 70vh; overflow-y: auto; overflow-x: hidden; }
+  .games-scroll::-webkit-scrollbar { width: 10px; }
+  .games-scroll::-webkit-scrollbar-thumb { background: var(--border); border-radius:5px; }
+
   .muted { color: var(--dim); font-size:12px; }
   .hint { font-size:12px; color:var(--dim); margin: 6px 0 10px; }
   .empty { padding: 40px; text-align:center; color: var(--dim); }
   .msg { padding:8px 12px; border-radius:6px; font-size:12px; margin-top:8px; display:none; }
   .msg.ok { background:rgba(158,206,106,.15); color:var(--win); display:block; }
   .msg.err { background:rgba(247,118,142,.15); color:var(--loss); display:block; }
-  .lock-row { display:grid; grid-template-columns: 1fr auto; gap:8px; align-items:center; }
+  .lock-row { display:grid; grid-template-columns: 1fr auto auto; gap:8px; align-items:center; }
+
+  /* sensible column widths for the big games table */
+  .games-table col.c-date    { width: 110px; }
+  .games-table col.c-tc      { width:  60px; }
+  .games-table col.c-color   { width:  75px; }
+  .games-table col.c-opp     { width: auto;  }
+  .games-table col.c-num     { width:  80px; }
+  .games-table col.c-moves   { width:  70px; }
+  .games-table col.c-dur     { width:  70px; }
+  .games-table col.c-res     { width:  70px; }
 </style>
 </head>
 <body>
 <header>
-  <div>
-    <h1>wasuke · atomic</h1>
-    <div class="sub" id="sub">loading…</div>
-  </div>
-  <div class="toolbar">
-    <div class="tabs" id="periodTabs">
+  <div class="header-top">
+    <div>
+      <h1>wasuke · atomic</h1>
+      <div class="sub" id="sub">loading…</div>
+    </div>
+    <div class="period-tabs" id="periodTabs" title="Filters Overview & Opponents tabs">
       <button data-p="all" class="on">All</button>
       <button data-p="day">Day</button>
       <button data-p="week">Week</button>
       <button data-p="month">Month</button>
     </div>
+  </div>
+  <div class="nav-tabs" id="navTabs">
+    <button data-s="overview" class="on">Overview</button>
+    <button data-s="opponents">Opponents</button>
+    <button data-s="games">Games</button>
+    <button data-s="upload">Upload</button>
   </div>
 </header>
 
@@ -102,97 +153,100 @@
 
   <div id="empty" class="card empty" style="display:none">
     <div style="font-size:18px; margin-bottom:10px;">No games in the database yet</div>
-    <div>Scroll down to the upload section to paste some in.</div>
+    <div>Head to the <b>Upload</b> tab to paste some in.</div>
   </div>
 
-  <div class="grid kpis" id="kpis" style="margin-bottom:16px;"></div>
+  <!-- ====== OVERVIEW ====== -->
+  <section class="section on" data-s="overview">
+    <div class="grid kpis" id="kpis" style="margin-bottom:16px;"></div>
 
-  <div class="grid row-2" style="margin-bottom:16px;">
-    <div class="card">
-      <h2>ELO over time</h2>
-      <div class="chart-wrap"><canvas id="chartElo"></canvas></div>
+    <div class="grid" style="margin-bottom:16px;">
+      <div class="card">
+        <h2>ELO over time (all games)</h2>
+        <div class="chart-wrap tall"><canvas id="chartElo"></canvas></div>
+      </div>
     </div>
-    <div class="card">
-      <h2>Point change per game</h2>
-      <div class="chart-wrap"><canvas id="chartPts"></canvas></div>
-    </div>
-  </div>
 
-  <div class="grid row-2" style="margin-bottom:16px;">
-    <div class="card">
-      <h2>Games per day</h2>
-      <div class="chart-wrap"><canvas id="chartDaily"></canvas></div>
+    <div class="grid row-3" style="margin-bottom:16px;">
+      <div class="card">
+        <h2>Point change per game</h2>
+        <div class="chart-wrap"><canvas id="chartPts"></canvas></div>
+      </div>
+      <div class="card">
+        <h2>Games per day</h2>
+        <div class="chart-wrap"><canvas id="chartDaily"></canvas></div>
+      </div>
+      <div class="card">
+        <h2>Results by color</h2>
+        <div class="chart-wrap"><canvas id="chartColor"></canvas></div>
+      </div>
     </div>
-    <div class="card">
-      <h2>Results by color</h2>
-      <div class="chart-wrap"><canvas id="chartColor"></canvas></div>
-    </div>
-  </div>
+  </section>
 
-  <div class="grid row-4" style="margin-bottom:16px;">
-    <div class="card">
-      <h2>Most played</h2>
-      <div class="scroll"><table id="tblMost"></table></div>
+  <!-- ====== OPPONENTS ====== -->
+  <section class="section" data-s="opponents">
+    <div class="grid row-2" style="margin-bottom:16px;">
+      <div class="card"><h2>Most played</h2><table id="tblMost"></table></div>
+      <div class="card"><h2>Record vs most played</h2><table id="tblRecord"></table></div>
     </div>
-    <div class="card">
-      <h2>Highest rated opponents</h2>
-      <div class="scroll"><table id="tblHighRated"></table></div>
+    <div class="grid row-2" style="margin-bottom:16px;">
+      <div class="card"><h2>Highest rated opponents</h2><table id="tblHighRated"></table></div>
+      <div class="card"><h2>Highest ELO wins</h2><table id="tblBestWins"></table></div>
     </div>
-    <div class="card">
-      <h2>Highest ELO wins</h2>
-      <div class="scroll"><table id="tblBestWins"></table></div>
+    <div class="grid row-2" style="margin-bottom:16px;">
+      <div class="card"><h2>Worst losses (by opp ELO)</h2><table id="tblWorstLoss"></table></div>
+      <div class="card"><h2>Biggest point swings</h2><table id="tblSwings"></table></div>
     </div>
-    <div class="card">
-      <h2>Worst losses (by opp ELO)</h2>
-      <div class="scroll"><table id="tblWorstLoss"></table></div>
-    </div>
-  </div>
+  </section>
 
-  <div class="grid row-2" style="margin-bottom:16px;">
+  <!-- ====== GAMES ====== -->
+  <section class="section" data-s="games">
     <div class="card">
-      <h2>Most played: record breakdown</h2>
-      <div class="scroll"><table id="tblRecord"></table></div>
+      <div class="section-head">
+        <h3>Games <span class="muted" id="gameCount"></span></h3>
+        <div class="muted">Click a column header to sort</div>
+      </div>
+      <div class="games-scroll">
+        <table class="games-table" id="tblGames">
+          <colgroup>
+            <col class="c-date"><col class="c-tc"><col class="c-color"><col class="c-opp">
+            <col class="c-num"><col class="c-moves"><col class="c-dur"><col class="c-res">
+            <col class="c-num"><col class="c-num">
+          </colgroup>
+        </table>
+      </div>
     </div>
+  </section>
+
+  <!-- ====== UPLOAD ====== -->
+  <section class="section" data-s="upload">
     <div class="card">
-      <h2>Biggest point swings</h2>
-      <div class="scroll"><table id="tblSwings"></table></div>
+      <h2>Upload new games</h2>
+      <div class="hint">Enter the password, paste one or more game blocks exactly as copied from chess.com, and submit. Duplicates (same timestamp) are skipped server-side. The page reloads after upload so stats reflect the new data.</div>
+      <div class="lock-row" style="margin-bottom:10px;">
+        <input type="password" id="pw" placeholder="upload password">
+        <button class="btn" id="btnImport">Submit</button>
+        <button class="btn ghost" id="btnExportCsv">Export CSV</button>
+      </div>
+      <textarea id="pasteArea" placeholder="Paste games here..."></textarea>
+      <div id="msg" class="msg"></div>
     </div>
-  </div>
-
-  <div class="card" style="margin-bottom:16px;">
-    <h2>Games <span class="muted" id="gameCount"></span></h2>
-    <div class="scroll"><table id="tblGames"></table></div>
-  </div>
-
-  <div class="card">
-    <h2>Upload new games</h2>
-    <div class="hint">Enter the password, paste one or more game blocks exactly as copied from chess.com, and submit. Duplicates (same timestamp + opponent) are skipped server-side.</div>
-    <div class="lock-row" style="margin-bottom:10px;">
-      <input type="password" id="pw" placeholder="upload password">
-      <button class="btn ghost" id="btnExportCsv">Export CSV</button>
-    </div>
-    <textarea id="pasteArea" placeholder="Paste games here..."></textarea>
-    <div class="toolbar" style="margin-top:10px;">
-      <button class="btn" id="btnImport">Submit</button>
-      <div class="spacer"></div>
-      <button class="btn ghost" id="btnReload">Refresh</button>
-    </div>
-    <div id="msg" class="msg"></div>
-  </div>
+  </section>
 
 </div>
 
 <script>
-const STORE_KEY_PW = "atomic-upload-pw";  // only used to remember password across reloads
+const STORE_KEY_PW = "atomic-upload-pw";
 let GAMES = [];
 let currentPeriod = "all";
+let currentSection = "overview";
+let gamesSort = { key: "played_at", dir: -1 };  // default: newest first
 
 // ---------- fetching ----------
 async function fetchGames() {
   const r = await fetch("/api/games");
   if (!r.ok) throw new Error("fetch failed: " + r.status);
   const data = await r.json();
-  // normalize: API returns played_at as ISO string from Postgres
   GAMES = (data.games || []).map(g => ({
     ...g,
     played_at: typeof g.played_at === "string" ? g.played_at : new Date(g.played_at).toISOString(),
@@ -249,6 +303,10 @@ const chartOptsDark = {
 function fmtDt(iso) {
   const d = new Date(iso);
   return d.toLocaleString(undefined, {month:"short", day:"2-digit", hour:"2-digit", minute:"2-digit"});
+}
+function fmtDtShort(iso) {
+  const d = new Date(iso);
+  return d.toLocaleString(undefined, {month:"short", day:"2-digit"});
 }
 function destroyChart(k) { if (charts[k]) { charts[k].destroy(); delete charts[k]; } }
 
@@ -309,6 +367,8 @@ function renderKpis(all, scoped) {
 function renderEloChart(games) {
   destroyChart("elo");
   const pts = games.map(g => ({ x: g.played_at, y: +(g.user_rating + g.user_change).toFixed(1) }));
+  const xMin = pts.length ? pts[0].x : undefined;
+  const xMax = pts.length ? pts[pts.length - 1].x : undefined;
   charts.elo = new Chart(document.getElementById("chartElo"), {
     type: "line",
     data: { datasets: [{
@@ -319,6 +379,7 @@ function renderEloChart(games) {
     options: { ...chartOptsDark,
       scales: {
         x: { type: "time", time: { tooltipFormat: "MMM d HH:mm" },
+             min: xMin, max: xMax, bounds: "data", offset: false,
              grid:{color:"#272c37"}, ticks:{color:"#8b92a3"} },
         y: { grid:{color:"#272c37"}, ticks:{color:"#8b92a3"} },
       },
@@ -402,7 +463,7 @@ function renderOpponentTables(games) {
   });
 
   renderTable("tblMost",
-    [...summary].sort((a,b)=>b.n-a.n).slice(0,15),
+    [...summary].sort((a,b)=>b.n-a.n).slice(0,10),
     [
       { h:"Opponent", render:r=>r.opp },
       { h:"N", r:true, render:r=>r.n },
@@ -416,9 +477,7 @@ function renderOpponentTables(games) {
       { h:"Opponent", render:r=>r.opp },
       { h:"Games", r:true, render:r=>r.n },
       { h:"Win%", r:true, render:r=>((100*r.w/r.n)||0).toFixed(0)+"%" },
-      { h:"W", r:true, render:r=>r.w },
-      { h:"D", r:true, render:r=>r.d },
-      { h:"L", r:true, render:r=>r.l },
+      { h:"W-D-L", r:true, render:r=>`${r.w}-${r.d}-${r.l}` },
       { h:"Peak opp", r:true, render:r=>r.maxRating },
       { h:"Net Δ", r:true, render:r=>(r.netPts>=0?'+':'')+r.netPts.toFixed(1) },
     ]);
@@ -437,16 +496,16 @@ function renderOpponentTables(games) {
     [
       { h:"Opponent", render:g=>g.opponent_name },
       { h:"Rating", r:true, render:g=>g.opponent_rating },
-      { h:"Date", r:true, render:g=>fmtDt(g.played_at) },
+      { h:"Date", r:true, render:g=>fmtDtShort(g.played_at) },
       { h:"+Δ", r:true, render:g=>"+"+g.user_change.toFixed(1) },
     ]);
 
   renderTable("tblWorstLoss",
-    games.filter(g=>g.result==="loss").sort((a,b)=>a.opponent_rating-b.opponent_rating).slice(0,10),
+    games.filter(g=>g.result==="loss").sort((a,b)=>b.opponent_rating-a.opponent_rating).slice(0,10),
     [
       { h:"Opponent", render:g=>g.opponent_name },
       { h:"Rating", r:true, render:g=>g.opponent_rating },
-      { h:"Date", r:true, render:g=>fmtDt(g.played_at) },
+      { h:"Date", r:true, render:g=>fmtDtShort(g.played_at) },
       { h:"Δ", r:true, render:g=>g.user_change.toFixed(1) },
     ]);
 
@@ -454,27 +513,69 @@ function renderOpponentTables(games) {
     [...games].sort((a,b)=>Math.abs(b.user_change)-Math.abs(a.user_change)).slice(0,10),
     [
       { h:"Opponent", render:g=>g.opponent_name+" ("+g.opponent_rating+")" },
-      { h:"Date", r:true, render:g=>fmtDt(g.played_at) },
+      { h:"Date", r:true, render:g=>fmtDtShort(g.played_at) },
       { h:"Result", r:true, render:g=>`<span class="pill ${g.result}">${g.result[0].toUpperCase()}</span>` },
       { h:"Δ", r:true, render:g=>`<b style="color:${g.user_change>=0?'var(--win)':'var(--loss)'}">${g.user_change>=0?'+':''}${g.user_change.toFixed(1)}</b>` },
     ]);
 }
 
+// ---------- games table (sortable) ----------
+const GAMES_COLS = [
+  { key: "played_at",       h: "Date",      sortable: true,
+    cmp:  (a,b) => new Date(a.played_at) - new Date(b.played_at),
+    render: g => fmtDt(g.played_at) },
+  { key: "time_control",    h: "TC",        sortable: false,
+    render: g => g.time_control },
+  { key: "user_color",      h: "Color",     sortable: false,
+    render: g => g.user_color ? `<span class="color-dot ${g.user_color}"></span> ${g.user_color}` : '<span class="muted">?</span>' },
+  { key: "opponent_name",   h: "Opponent",  sortable: false,
+    render: g => g.opponent_name },
+  { key: "opponent_rating", h: "Opp ELO",   sortable: true, r: true,
+    cmp:  (a,b) => a.opponent_rating - b.opponent_rating,
+    render: g => g.opponent_rating },
+  { key: "moves",           h: "Moves",     sortable: false, r: true,
+    render: g => g.moves ?? "" },
+  { key: "duration_min",    h: "Dur",       sortable: false, r: true,
+    render: g => (g.duration_min ?? "") + "'" },
+  { key: "result",          h: "Result",    sortable: false,
+    render: g => `<span class="pill ${g.result}">${g.result}</span>` },
+  { key: "user_rating",     h: "My ELO",    sortable: true, r: true,
+    cmp:  (a,b) => a.user_rating - b.user_rating,
+    render: g => g.user_rating },
+  { key: "user_change",     h: "Δ",         sortable: true, r: true,
+    cmp:  (a,b) => a.user_change - b.user_change,
+    render: g => `<b style="color:${g.user_change>=0?'var(--win)':'var(--loss)'}">${g.user_change>=0?'+':''}${g.user_change.toFixed(1)}</b>` },
+];
+
 function renderGamesTable(games) {
-  const rows = [...games].reverse();
-  document.getElementById("gameCount").textContent = `(${rows.length})`;
-  renderTable("tblGames", rows, [
-    { h:"Date", render:g=>fmtDt(g.played_at) },
-    { h:"TC", render:g=>g.time_control },
-    { h:"Color", render:g => g.user_color ? `<span class="color-dot ${g.user_color}"></span> ${g.user_color}` : '<span class="muted">?</span>' },
-    { h:"Opponent", render:g=>g.opponent_name },
-    { h:"Opp rating", r:true, render:g=>g.opponent_rating },
-    { h:"Moves", r:true, render:g=>g.moves ?? "" },
-    { h:"Duration", r:true, render:g=>(g.duration_min ?? "")+"'" },
-    { h:"Result", render:g=>`<span class="pill ${g.result}">${g.result}</span>` },
-    { h:"My rating", r:true, render:g=>g.user_rating },
-    { h:"Δ", r:true, render:g=>`<b style="color:${g.user_change>=0?'var(--win)':'var(--loss)'}">${g.user_change>=0?'+':''}${g.user_change.toFixed(1)}</b>` },
-  ]);
+  const col = GAMES_COLS.find(c => c.key === gamesSort.key) || GAMES_COLS[0];
+  const sorted = [...games].sort((a, b) => col.cmp(a, b) * gamesSort.dir);
+  document.getElementById("gameCount").textContent = `(${sorted.length})`;
+
+  const table = document.getElementById("tblGames");
+  const colgroup = table.querySelector("colgroup");
+
+  const head = "<thead><tr>" + GAMES_COLS.map(c => {
+    const active = c.key === gamesSort.key;
+    const arr = active ? `<span class="arr">${gamesSort.dir === 1 ? "▲" : "▼"}</span>` : "";
+    const cls = (c.r ? "r " : "") + (c.sortable ? "" : "nosort");
+    return `<th class="${cls}" data-key="${c.sortable ? c.key : ""}">${c.h}${arr}</th>`;
+  }).join("") + "</tr></thead>";
+
+  const body = "<tbody>" + sorted.map(g => "<tr>" + GAMES_COLS.map(c =>
+    `<td class="${c.r ? 'r' : ''}">${c.render(g)}</td>`).join("") + "</tr>").join("") + "</tbody>";
+
+  table.innerHTML = (colgroup ? colgroup.outerHTML : "") + head + body;
+
+  table.querySelectorAll("th[data-key]").forEach(th => {
+    const k = th.dataset.key;
+    if (!k) return;
+    th.addEventListener("click", () => {
+      if (gamesSort.key === k) gamesSort.dir = -gamesSort.dir;
+      else { gamesSort.key = k; gamesSort.dir = (k === "played_at") ? -1 : 1; }
+      renderGamesTable(GAMES);
+    });
+  });
 }
 
 function setSubtitle(all) {
@@ -493,7 +594,7 @@ function render() {
   renderDailyChart(scoped);
   renderColorChart(scoped);
   renderOpponentTables(scoped);
-  renderGamesTable(scoped);
+  renderGamesTable(GAMES);  // Games tab always shows everything, sorted as user chose
 }
 
 // ---------- actions ----------
@@ -501,7 +602,6 @@ function showMsg(text, ok=true) {
   const el = document.getElementById("msg");
   el.className = "msg " + (ok ? "ok" : "err");
   el.textContent = text;
-  setTimeout(() => { el.className = "msg"; el.textContent = ""; }, 5000);
 }
 
 document.getElementById("btnImport").onclick = async () => {
@@ -518,20 +618,14 @@ document.getElementById("btnImport").onclick = async () => {
       body: JSON.stringify({ password, text }),
     });
     const j = await r.json();
-    if (!r.ok) { showMsg(j.error || "upload failed", false); return; }
-    showMsg(`parsed ${j.parsed}, inserted ${j.inserted}, duplicates ${j.duplicates}`);
-    document.getElementById("pasteArea").value = "";
+    if (!r.ok) { showMsg(j.error || "upload failed", false); btn.disabled = false; btn.textContent = "Submit"; return; }
+    showMsg(`parsed ${j.parsed}, inserted ${j.inserted}, duplicates ${j.duplicates} · reloading…`);
     sessionStorage.setItem(STORE_KEY_PW, password);
-    await fetchGames(); render();
+    setTimeout(() => window.location.reload(), 900);
   } catch (e) {
     showMsg("network error", false);
-  } finally {
     btn.disabled = false; btn.textContent = "Submit";
   }
-};
-
-document.getElementById("btnReload").onclick = async () => {
-  await fetchGames(); render(); showMsg("refreshed");
 };
 
 document.getElementById("btnExportCsv").onclick = () => {
@@ -554,6 +648,16 @@ document.getElementById("periodTabs").addEventListener("click", (e) => {
   currentPeriod = e.target.dataset.p;
   for (const b of e.currentTarget.children) b.classList.toggle("on", b === e.target);
   render();
+});
+
+document.getElementById("navTabs").addEventListener("click", (e) => {
+  if (e.target.tagName !== "BUTTON") return;
+  currentSection = e.target.dataset.s;
+  for (const b of e.currentTarget.children) b.classList.toggle("on", b === e.target);
+  document.querySelectorAll(".section").forEach(s =>
+    s.classList.toggle("on", s.dataset.s === currentSection));
+  // Charts need a resize tick after becoming visible
+  requestAnimationFrame(() => Object.values(charts).forEach(c => c.resize()));
 });
 
 // ---------- boot ----------
