@@ -374,7 +374,7 @@ function renderEloChart(games) {
     data: { datasets: [{
       label: "rating", data: pts,
       borderColor: "#7aa2f7", backgroundColor: "rgba(122,162,247,.15)",
-      fill: true, tension: .25, pointRadius: 2, pointHoverRadius: 4,
+      fill: true, tension: .25, pointRadius: 0, pointHoverRadius: 4, pointHitRadius: 8,
     }]},
     options: { ...chartOptsDark,
       scales: {
