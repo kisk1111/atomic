@@ -51,7 +51,7 @@ export default async function handler(req, res) {
           ${g.opponent_name}, ${g.opponent_rating}, ${g.opponent_change},
           ${g.result}, ${g.winner_name}, ${g.white_player}, ${g.black_player}
         )
-        ON CONFLICT (played_at, user_name, opponent_name) DO NOTHING
+        ON CONFLICT (played_at) DO NOTHING
         RETURNING id
       `;
       if (r.length) inserted++;
