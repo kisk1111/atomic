@@ -1,0 +1,570 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>wasuke · atomic chess dashboard</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+<style>
+  :root {
+    --bg:#0f1115; --panel:#171a21; --panel2:#1f232c; --border:#272c37;
+    --ink:#e6e8ee; --dim:#8b92a3; --accent:#7aa2f7; --win:#9ece6a;
+    --loss:#f7768e; --draw:#e0af68; --white-sq:#e6e8ee; --black-sq:#2d333f;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin:0; padding:0; background:var(--bg); color:var(--ink);
+    font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  a { color: var(--accent); }
+  header { padding: 20px 28px; display:flex; justify-content:space-between;
+    align-items:center; border-bottom:1px solid var(--border); background: var(--panel); }
+  header h1 { margin:0; font-size:22px; letter-spacing:.3px; }
+  header .sub { color: var(--dim); font-size:13px; margin-top:4px; }
+  .container { max-width: 1400px; margin: 0 auto; padding: 20px 28px 80px; }
+  .grid { display:grid; gap:16px; }
+  .kpis { grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); }
+  .row-2 { grid-template-columns: 1fr 1fr; }
+  .row-4 { grid-template-columns: repeat(4, 1fr); }
+  @media (max-width: 1000px) { .row-2, .row-4 { grid-template-columns: 1fr; } }
+  .card { background: var(--panel); border:1px solid var(--border);
+    border-radius:10px; padding:16px 18px; }
+  .card h2 { font-size:13px; font-weight:600; margin:0 0 10px; color:var(--dim);
+    text-transform:uppercase; letter-spacing:1px; }
+  .kpi .v { font-size:28px; font-weight:600; }
+  .kpi .v small { font-size:14px; color:var(--dim); font-weight:400; margin-left:6px; }
+  .kpi .delta { font-size:12px; color:var(--dim); margin-top:4px; }
+  .kpi .delta.up { color:var(--win); }
+  .kpi .delta.down { color:var(--loss); }
+  .wdl-bar { display:flex; height:10px; border-radius:5px; overflow:hidden;
+    margin-top:8px; background: var(--panel2); }
+  .wdl-bar span { display:block; height:100%; }
+  .wdl-bar .w { background: var(--win); }
+  .wdl-bar .d { background: var(--draw); }
+  .wdl-bar .l { background: var(--loss); }
+  .wdl-legend { display:flex; gap:10px; font-size:12px; color:var(--dim); margin-top:6px; }
+  .wdl-legend b { color: var(--ink); font-weight:600; }
+  table { width:100%; border-collapse:collapse; font-size:13px; }
+  th, td { text-align:left; padding:6px 8px; border-bottom:1px solid var(--border); }
+  th { color:var(--dim); font-weight:500; position: sticky; top: 0; background: var(--panel); }
+  td.r, th.r { text-align:right; }
+  .pill { display:inline-block; padding:1px 8px; border-radius:10px; font-size:11px;
+    font-weight:600; }
+  .pill.win { background:rgba(158,206,106,.15); color:var(--win); }
+  .pill.loss { background:rgba(247,118,142,.15); color:var(--loss); }
+  .pill.draw { background:rgba(224,175,104,.15); color:var(--draw); }
+  .color-dot { display:inline-block; width:10px; height:10px; border-radius:2px;
+    vertical-align:middle; border:1px solid var(--border); }
+  .color-dot.white { background: var(--white-sq); }
+  .color-dot.black { background: var(--black-sq); }
+  .tabs { display:inline-flex; background: var(--panel2); border-radius:8px;
+    padding:3px; gap:2px; }
+  .tabs button { background:transparent; border:0; color:var(--dim); padding:6px 12px;
+    border-radius:6px; cursor:pointer; font-size:12px; font-weight:500; }
+  .tabs button.on { background: var(--panel); color: var(--ink); }
+  textarea, input[type=password] { width:100%; background: var(--panel2);
+    border:1px solid var(--border); color:var(--ink); border-radius:8px; padding:10px;
+    font-family: ui-monospace, Consolas, monospace; font-size:13px; }
+  textarea { min-height:140px; resize:vertical; }
+  button.btn { background: var(--accent); color:#0b1020; border:0;
+    padding:8px 14px; border-radius:8px; font-weight:600; cursor:pointer; font-size:13px; }
+  button.btn.ghost { background: transparent; color: var(--ink); border:1px solid var(--border); }
+  button.btn:disabled { opacity:.5; cursor:not-allowed; }
+  .toolbar { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+  .toolbar .spacer { flex:1; }
+  .chart-wrap { position:relative; height: 280px; }
+  .scroll { max-height: 360px; overflow:auto; }
+  .muted { color: var(--dim); font-size:12px; }
+  .hint { font-size:12px; color:var(--dim); margin: 6px 0 10px; }
+  .empty { padding: 40px; text-align:center; color: var(--dim); }
+  .msg { padding:8px 12px; border-radius:6px; font-size:12px; margin-top:8px; display:none; }
+  .msg.ok { background:rgba(158,206,106,.15); color:var(--win); display:block; }
+  .msg.err { background:rgba(247,118,142,.15); color:var(--loss); display:block; }
+  .lock-row { display:grid; grid-template-columns: 1fr auto; gap:8px; align-items:center; }
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <h1>wasuke · atomic</h1>
+    <div class="sub" id="sub">loading…</div>
+  </div>
+  <div class="toolbar">
+    <div class="tabs" id="periodTabs">
+      <button data-p="all" class="on">All</button>
+      <button data-p="day">Day</button>
+      <button data-p="week">Week</button>
+      <button data-p="month">Month</button>
+    </div>
+  </div>
+</header>
+
+<div class="container">
+
+  <div id="empty" class="card empty" style="display:none">
+    <div style="font-size:18px; margin-bottom:10px;">No games in the database yet</div>
+    <div>Scroll down to the upload section to paste some in.</div>
+  </div>
+
+  <div class="grid kpis" id="kpis" style="margin-bottom:16px;"></div>
+
+  <div class="grid row-2" style="margin-bottom:16px;">
+    <div class="card">
+      <h2>ELO over time</h2>
+      <div class="chart-wrap"><canvas id="chartElo"></canvas></div>
+    </div>
+    <div class="card">
+      <h2>Point change per game</h2>
+      <div class="chart-wrap"><canvas id="chartPts"></canvas></div>
+    </div>
+  </div>
+
+  <div class="grid row-2" style="margin-bottom:16px;">
+    <div class="card">
+      <h2>Games per day</h2>
+      <div class="chart-wrap"><canvas id="chartDaily"></canvas></div>
+    </div>
+    <div class="card">
+      <h2>Results by color</h2>
+      <div class="chart-wrap"><canvas id="chartColor"></canvas></div>
+    </div>
+  </div>
+
+  <div class="grid row-4" style="margin-bottom:16px;">
+    <div class="card">
+      <h2>Most played</h2>
+      <div class="scroll"><table id="tblMost"></table></div>
+    </div>
+    <div class="card">
+      <h2>Highest rated opponents</h2>
+      <div class="scroll"><table id="tblHighRated"></table></div>
+    </div>
+    <div class="card">
+      <h2>Highest ELO wins</h2>
+      <div class="scroll"><table id="tblBestWins"></table></div>
+    </div>
+    <div class="card">
+      <h2>Worst losses (by opp ELO)</h2>
+      <div class="scroll"><table id="tblWorstLoss"></table></div>
+    </div>
+  </div>
+
+  <div class="grid row-2" style="margin-bottom:16px;">
+    <div class="card">
+      <h2>Most played: record breakdown</h2>
+      <div class="scroll"><table id="tblRecord"></table></div>
+    </div>
+    <div class="card">
+      <h2>Biggest point swings</h2>
+      <div class="scroll"><table id="tblSwings"></table></div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-bottom:16px;">
+    <h2>Games <span class="muted" id="gameCount"></span></h2>
+    <div class="scroll"><table id="tblGames"></table></div>
+  </div>
+
+  <div class="card">
+    <h2>Upload new games</h2>
+    <div class="hint">Enter the password, paste one or more game blocks exactly as copied from chess.com, and submit. Duplicates (same timestamp + opponent) are skipped server-side.</div>
+    <div class="lock-row" style="margin-bottom:10px;">
+      <input type="password" id="pw" placeholder="upload password">
+      <button class="btn ghost" id="btnExportCsv">Export CSV</button>
+    </div>
+    <textarea id="pasteArea" placeholder="Paste games here..."></textarea>
+    <div class="toolbar" style="margin-top:10px;">
+      <button class="btn" id="btnImport">Submit</button>
+      <div class="spacer"></div>
+      <button class="btn ghost" id="btnReload">Refresh</button>
+    </div>
+    <div id="msg" class="msg"></div>
+  </div>
+
+</div>
+
+<script>
+const STORE_KEY_PW = "atomic-upload-pw";  // only used to remember password across reloads
+let GAMES = [];
+let currentPeriod = "all";
+
+// ---------- fetching ----------
+async function fetchGames() {
+  const r = await fetch("/api/games");
+  if (!r.ok) throw new Error("fetch failed: " + r.status);
+  const data = await r.json();
+  // normalize: API returns played_at as ISO string from Postgres
+  GAMES = (data.games || []).map(g => ({
+    ...g,
+    played_at: typeof g.played_at === "string" ? g.played_at : new Date(g.played_at).toISOString(),
+    user_change: +g.user_change,
+    opponent_change: +g.opponent_change,
+    duration_min: g.duration_min == null ? null : +g.duration_min,
+    moves: g.moves == null ? null : +g.moves,
+  }));
+  GAMES.sort((a,b)=> new Date(a.played_at) - new Date(b.played_at));
+}
+
+// ---------- analysis ----------
+function filterByPeriod(games, period) {
+  if (!games.length || period === "all") return games;
+  const last = new Date(games[games.length - 1].played_at);
+  const cut = new Date(last);
+  if (period === "day") cut.setDate(cut.getDate() - 1);
+  if (period === "week") cut.setDate(cut.getDate() - 7);
+  if (period === "month") cut.setMonth(cut.getMonth() - 1);
+  return games.filter(g => new Date(g.played_at) >= cut);
+}
+
+function wdl(games) {
+  let w=0,d=0,l=0;
+  for (const g of games) {
+    if (g.result === "win") w++;
+    else if (g.result === "draw") d++;
+    else l++;
+  }
+  return {w,d,l,total:w+d+l};
+}
+
+function groupBy(arr, keyFn) {
+  const m = new Map();
+  for (const x of arr) {
+    const k = keyFn(x);
+    if (!m.has(k)) m.set(k, []);
+    m.get(k).push(x);
+  }
+  return m;
+}
+
+// ---------- rendering ----------
+let charts = {};
+const chartOptsDark = {
+  responsive: true, maintainAspectRatio: false,
+  scales: {
+    x: { grid:{color:"#272c37"}, ticks:{color:"#8b92a3"} },
+    y: { grid:{color:"#272c37"}, ticks:{color:"#8b92a3"} },
+  },
+  plugins: { legend: { labels: { color: "#e6e8ee" } } }
+};
+
+function fmtDt(iso) {
+  const d = new Date(iso);
+  return d.toLocaleString(undefined, {month:"short", day:"2-digit", hour:"2-digit", minute:"2-digit"});
+}
+function destroyChart(k) { if (charts[k]) { charts[k].destroy(); delete charts[k]; } }
+
+function renderKpis(all, scoped) {
+  const el = document.getElementById("kpis");
+  const stats = wdl(scoped);
+  const last = all[all.length - 1];
+  const peak = all.reduce((m,g) => Math.max(m, g.user_rating + (g.user_change > 0 ? g.user_change : 0)), 0);
+  const currentRating = last ? Math.round(last.user_rating + last.user_change) : 0;
+  const netChange = scoped.reduce((s,g)=>s+g.user_change, 0);
+  const avgOppRating = scoped.length ? Math.round(scoped.reduce((s,g)=>s+g.opponent_rating,0)/scoped.length) : 0;
+  const wp = stats.total ? (100*stats.w/stats.total) : 0;
+  const dp = stats.total ? (100*stats.d/stats.total) : 0;
+  const lp = stats.total ? (100*stats.l/stats.total) : 0;
+
+  el.innerHTML = `
+    <div class="card kpi">
+      <h2>Current rating</h2>
+      <div class="v">${currentRating || "—"}</div>
+      <div class="delta ${netChange>=0?'up':'down'}">${netChange>=0?'+':''}${netChange.toFixed(1)} this ${currentPeriod}</div>
+    </div>
+    <div class="card kpi">
+      <h2>Peak rating</h2>
+      <div class="v">${Math.round(peak) || "—"}</div>
+      <div class="delta">all-time</div>
+    </div>
+    <div class="card kpi">
+      <h2>Games</h2>
+      <div class="v">${stats.total}<small>/${all.length}</small></div>
+      <div class="delta">in scope / total</div>
+    </div>
+    <div class="card kpi">
+      <h2>Avg opponent</h2>
+      <div class="v">${avgOppRating || "—"}</div>
+      <div class="delta">rating</div>
+    </div>
+    <div class="card kpi" style="grid-column: span 2;">
+      <h2>Win / Draw / Loss</h2>
+      <div class="v" style="font-size:22px;">
+        <span style="color:var(--win)">${stats.w}</span> /
+        <span style="color:var(--draw)">${stats.d}</span> /
+        <span style="color:var(--loss)">${stats.l}</span>
+      </div>
+      <div class="wdl-bar">
+        <span class="w" style="width:${wp}%"></span>
+        <span class="d" style="width:${dp}%"></span>
+        <span class="l" style="width:${lp}%"></span>
+      </div>
+      <div class="wdl-legend">
+        <span><b>${wp.toFixed(1)}%</b> win</span>
+        <span><b>${dp.toFixed(1)}%</b> draw</span>
+        <span><b>${lp.toFixed(1)}%</b> loss</span>
+      </div>
+    </div>
+  `;
+}
+
+function renderEloChart(games) {
+  destroyChart("elo");
+  const pts = games.map(g => ({ x: g.played_at, y: +(g.user_rating + g.user_change).toFixed(1) }));
+  charts.elo = new Chart(document.getElementById("chartElo"), {
+    type: "line",
+    data: { datasets: [{
+      label: "rating", data: pts,
+      borderColor: "#7aa2f7", backgroundColor: "rgba(122,162,247,.15)",
+      fill: true, tension: .25, pointRadius: 2, pointHoverRadius: 4,
+    }]},
+    options: { ...chartOptsDark,
+      scales: {
+        x: { type: "time", time: { tooltipFormat: "MMM d HH:mm" },
+             grid:{color:"#272c37"}, ticks:{color:"#8b92a3"} },
+        y: { grid:{color:"#272c37"}, ticks:{color:"#8b92a3"} },
+      },
+      plugins: { legend: { display:false } },
+    }
+  });
+}
+
+function renderPtsChart(games) {
+  destroyChart("pts");
+  const labels = games.map((_,i)=>i+1);
+  const data = games.map(g => g.user_change);
+  const colors = games.map(g => g.result==="win"?"#9ece6a": g.result==="loss"?"#f7768e":"#e0af68");
+  charts.pts = new Chart(document.getElementById("chartPts"), {
+    type: "bar",
+    data: { labels, datasets: [{ label: "Δ rating", data, backgroundColor: colors, borderWidth:0 }] },
+    options: { ...chartOptsDark, plugins: { legend: { display:false },
+      tooltip: { callbacks: { title: (ctx) => {
+        const g = games[ctx[0].dataIndex];
+        return `${fmtDt(g.played_at)} · vs ${g.opponent_name}`;
+      } } } } }
+  });
+}
+
+function renderDailyChart(games) {
+  destroyChart("daily");
+  const byDay = groupBy(games, g => g.played_at.slice(0,10));
+  const labels = [...byDay.keys()].sort();
+  const wins   = labels.map(d => byDay.get(d).filter(g => g.result==="win").length);
+  const draws  = labels.map(d => byDay.get(d).filter(g => g.result==="draw").length);
+  const losses = labels.map(d => byDay.get(d).filter(g => g.result==="loss").length);
+  charts.daily = new Chart(document.getElementById("chartDaily"), {
+    type: "bar",
+    data: { labels, datasets: [
+      { label:"Wins",   data:wins,   backgroundColor:"#9ece6a", stack:"a" },
+      { label:"Draws",  data:draws,  backgroundColor:"#e0af68", stack:"a" },
+      { label:"Losses", data:losses, backgroundColor:"#f7768e", stack:"a" },
+    ]},
+    options: { ...chartOptsDark,
+      scales: { x: { stacked:true, grid:{color:"#272c37"}, ticks:{color:"#8b92a3"} },
+                y: { stacked:true, grid:{color:"#272c37"}, ticks:{color:"#8b92a3"} } }
+    }
+  });
+}
+
+function renderColorChart(games) {
+  destroyChart("color");
+  const cats = ["white","black",null];
+  const labels = ["As White","As Black","Unknown (draw)"];
+  const w = cats.map(c => games.filter(g => g.user_color===c && g.result==="win").length);
+  const d = cats.map(c => games.filter(g => g.user_color===c && g.result==="draw").length);
+  const l = cats.map(c => games.filter(g => g.user_color===c && g.result==="loss").length);
+  charts.color = new Chart(document.getElementById("chartColor"), {
+    type: "bar",
+    data: { labels, datasets: [
+      { label:"Win",  data:w, backgroundColor:"#9ece6a" },
+      { label:"Draw", data:d, backgroundColor:"#e0af68" },
+      { label:"Loss", data:l, backgroundColor:"#f7768e" },
+    ]},
+    options: { ...chartOptsDark }
+  });
+}
+
+function renderTable(id, rows, cols) {
+  const t = document.getElementById(id);
+  if (!rows.length) { t.innerHTML = "<tr><td class='muted'>no data</td></tr>"; return; }
+  const head = "<tr>" + cols.map(c => `<th class="${c.r?'r':''}">${c.h}</th>`).join("") + "</tr>";
+  const body = rows.map(r => "<tr>" + cols.map(c => `<td class="${c.r?'r':''}">${c.render(r)}</td>`).join("") + "</tr>").join("");
+  t.innerHTML = head + body;
+}
+
+function renderOpponentTables(games) {
+  const byOpp = groupBy(games, g => g.opponent_name);
+  const summary = [...byOpp.entries()].map(([opp, gs]) => {
+    const w = gs.filter(g=>g.result==="win").length;
+    const d = gs.filter(g=>g.result==="draw").length;
+    const l = gs.filter(g=>g.result==="loss").length;
+    const netPts = gs.reduce((s,g)=>s+g.user_change,0);
+    const maxRating = Math.max(...gs.map(g=>g.opponent_rating));
+    return { opp, n: gs.length, w, d, l, netPts, maxRating };
+  });
+
+  renderTable("tblMost",
+    [...summary].sort((a,b)=>b.n-a.n).slice(0,15),
+    [
+      { h:"Opponent", render:r=>r.opp },
+      { h:"N", r:true, render:r=>r.n },
+      { h:"W-D-L", r:true, render:r=>`${r.w}-${r.d}-${r.l}` },
+      { h:"Δ", r:true, render:r=>`<span class="${r.netPts>=0?'pill win':'pill loss'}">${r.netPts>=0?'+':''}${r.netPts.toFixed(1)}</span>` },
+    ]);
+
+  renderTable("tblRecord",
+    [...summary].sort((a,b)=>b.n-a.n).slice(0,10),
+    [
+      { h:"Opponent", render:r=>r.opp },
+      { h:"Games", r:true, render:r=>r.n },
+      { h:"Win%", r:true, render:r=>((100*r.w/r.n)||0).toFixed(0)+"%" },
+      { h:"W", r:true, render:r=>r.w },
+      { h:"D", r:true, render:r=>r.d },
+      { h:"L", r:true, render:r=>r.l },
+      { h:"Peak opp", r:true, render:r=>r.maxRating },
+      { h:"Net Δ", r:true, render:r=>(r.netPts>=0?'+':'')+r.netPts.toFixed(1) },
+    ]);
+
+  renderTable("tblHighRated",
+    [...games].sort((a,b)=>b.opponent_rating-a.opponent_rating).slice(0,10),
+    [
+      { h:"Opponent", render:g=>g.opponent_name },
+      { h:"Rating", r:true, render:g=>g.opponent_rating },
+      { h:"Result", r:true, render:g=>`<span class="pill ${g.result}">${g.result[0].toUpperCase()}</span>` },
+      { h:"Δ", r:true, render:g=>(g.user_change>=0?'+':'')+g.user_change.toFixed(1) },
+    ]);
+
+  renderTable("tblBestWins",
+    games.filter(g=>g.result==="win").sort((a,b)=>b.opponent_rating-a.opponent_rating).slice(0,10),
+    [
+      { h:"Opponent", render:g=>g.opponent_name },
+      { h:"Rating", r:true, render:g=>g.opponent_rating },
+      { h:"Date", r:true, render:g=>fmtDt(g.played_at) },
+      { h:"+Δ", r:true, render:g=>"+"+g.user_change.toFixed(1) },
+    ]);
+
+  renderTable("tblWorstLoss",
+    games.filter(g=>g.result==="loss").sort((a,b)=>a.opponent_rating-b.opponent_rating).slice(0,10),
+    [
+      { h:"Opponent", render:g=>g.opponent_name },
+      { h:"Rating", r:true, render:g=>g.opponent_rating },
+      { h:"Date", r:true, render:g=>fmtDt(g.played_at) },
+      { h:"Δ", r:true, render:g=>g.user_change.toFixed(1) },
+    ]);
+
+  renderTable("tblSwings",
+    [...games].sort((a,b)=>Math.abs(b.user_change)-Math.abs(a.user_change)).slice(0,10),
+    [
+      { h:"Opponent", render:g=>g.opponent_name+" ("+g.opponent_rating+")" },
+      { h:"Date", r:true, render:g=>fmtDt(g.played_at) },
+      { h:"Result", r:true, render:g=>`<span class="pill ${g.result}">${g.result[0].toUpperCase()}</span>` },
+      { h:"Δ", r:true, render:g=>`<b style="color:${g.user_change>=0?'var(--win)':'var(--loss)'}">${g.user_change>=0?'+':''}${g.user_change.toFixed(1)}</b>` },
+    ]);
+}
+
+function renderGamesTable(games) {
+  const rows = [...games].reverse();
+  document.getElementById("gameCount").textContent = `(${rows.length})`;
+  renderTable("tblGames", rows, [
+    { h:"Date", render:g=>fmtDt(g.played_at) },
+    { h:"TC", render:g=>g.time_control },
+    { h:"Color", render:g => g.user_color ? `<span class="color-dot ${g.user_color}"></span> ${g.user_color}` : '<span class="muted">?</span>' },
+    { h:"Opponent", render:g=>g.opponent_name },
+    { h:"Opp rating", r:true, render:g=>g.opponent_rating },
+    { h:"Moves", r:true, render:g=>g.moves ?? "" },
+    { h:"Duration", r:true, render:g=>(g.duration_min ?? "")+"'" },
+    { h:"Result", render:g=>`<span class="pill ${g.result}">${g.result}</span>` },
+    { h:"My rating", r:true, render:g=>g.user_rating },
+    { h:"Δ", r:true, render:g=>`<b style="color:${g.user_change>=0?'var(--win)':'var(--loss)'}">${g.user_change>=0?'+':''}${g.user_change.toFixed(1)}</b>` },
+  ]);
+}
+
+function setSubtitle(all) {
+  const el = document.getElementById("sub");
+  if (!all.length) { el.textContent = "no games in database"; return; }
+  el.textContent = `${all.length} games · ${fmtDt(all[0].played_at)} → ${fmtDt(all[all.length-1].played_at)}`;
+}
+
+function render() {
+  document.getElementById("empty").style.display = GAMES.length ? "none" : "block";
+  setSubtitle(GAMES);
+  const scoped = filterByPeriod(GAMES, currentPeriod);
+  renderKpis(GAMES, scoped);
+  renderEloChart(GAMES);
+  renderPtsChart(scoped);
+  renderDailyChart(scoped);
+  renderColorChart(scoped);
+  renderOpponentTables(scoped);
+  renderGamesTable(scoped);
+}
+
+// ---------- actions ----------
+function showMsg(text, ok=true) {
+  const el = document.getElementById("msg");
+  el.className = "msg " + (ok ? "ok" : "err");
+  el.textContent = text;
+  setTimeout(() => { el.className = "msg"; el.textContent = ""; }, 5000);
+}
+
+document.getElementById("btnImport").onclick = async () => {
+  const text = document.getElementById("pasteArea").value;
+  const password = document.getElementById("pw").value;
+  if (!text.trim()) return showMsg("nothing pasted", false);
+  if (!password) return showMsg("password required", false);
+  const btn = document.getElementById("btnImport");
+  btn.disabled = true; btn.textContent = "Uploading…";
+  try {
+    const r = await fetch("/api/upload", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ password, text }),
+    });
+    const j = await r.json();
+    if (!r.ok) { showMsg(j.error || "upload failed", false); return; }
+    showMsg(`parsed ${j.parsed}, inserted ${j.inserted}, duplicates ${j.duplicates}`);
+    document.getElementById("pasteArea").value = "";
+    sessionStorage.setItem(STORE_KEY_PW, password);
+    await fetchGames(); render();
+  } catch (e) {
+    showMsg("network error", false);
+  } finally {
+    btn.disabled = false; btn.textContent = "Submit";
+  }
+};
+
+document.getElementById("btnReload").onclick = async () => {
+  await fetchGames(); render(); showMsg("refreshed");
+};
+
+document.getElementById("btnExportCsv").onclick = () => {
+  if (!GAMES.length) { showMsg("no games to export", false); return; }
+  const cols = Object.keys(GAMES[0]);
+  const esc = v => {
+    v = v == null ? "" : String(v);
+    return /[,"\n]/.test(v) ? '"'+v.replace(/"/g,'""')+'"' : v;
+  };
+  const csv = [cols.join(",")].concat(GAMES.map(g => cols.map(c => esc(g[c])).join(","))).join("\n");
+  const blob = new Blob([csv], {type:"text/csv"});
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "games.csv";
+  a.click();
+};
+
+document.getElementById("periodTabs").addEventListener("click", (e) => {
+  if (e.target.tagName !== "BUTTON") return;
+  currentPeriod = e.target.dataset.p;
+  for (const b of e.currentTarget.children) b.classList.toggle("on", b === e.target);
+  render();
+});
+
+// ---------- boot ----------
+(async function init() {
+  const savedPw = sessionStorage.getItem(STORE_KEY_PW);
+  if (savedPw) document.getElementById("pw").value = savedPw;
+  try { await fetchGames(); } catch(e) {
+    document.getElementById("sub").textContent = "failed to load games";
+  }
+  render();
+})();
+</script>
+</body>
+</html>
