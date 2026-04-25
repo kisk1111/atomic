@@ -323,8 +323,19 @@
 
   <!-- ====== UPLOAD ====== -->
   <section class="section" data-s="upload">
+    <div class="card" style="margin-bottom:14px;">
+      <h2>Sync from chess.com</h2>
+      <div class="hint">Pulls every atomic game from your chess.com archives via the public API. Dedup is by timestamp, so it's safe to run repeatedly. Use <b>Wipe &amp; resync</b> if your existing rows have inconsistent timestamps (e.g. a mix of paste-uploaded local-time games and API UTC games) and you want a clean slate.</div>
+      <div class="lock-row" style="margin-bottom:10px;">
+        <input type="password" id="pwSync" placeholder="upload password">
+        <button class="btn" id="btnSync">Sync</button>
+        <button class="btn ghost" id="btnWipeSync">Wipe &amp; resync</button>
+      </div>
+      <div id="msgSync" class="msg"></div>
+    </div>
+
     <div class="card">
-      <h2>Upload new games</h2>
+      <h2>Upload new games (paste)</h2>
       <div class="hint">Enter the password, paste one or more game blocks exactly as copied from chess.com, and submit. Duplicates (same timestamp) are skipped server-side. The page reloads after upload so stats reflect the new data.</div>
       <div class="lock-row" style="margin-bottom:10px;">
         <input type="password" id="pw" placeholder="upload password">
@@ -1025,6 +1036,50 @@ document.getElementById("btnImport").onclick = async () => {
   }
 };
 
+function showSyncMsg(text, ok=true) {
+  const el = document.getElementById("msgSync");
+  el.className = "msg " + (ok ? "ok" : "err");
+  el.textContent = text;
+}
+
+async function runSync(wipe) {
+  const password = document.getElementById("pwSync").value
+    || document.getElementById("pw").value;
+  if (!password) return showSyncMsg("password required", false);
+  if (wipe && !confirm("Wipe all games and re-pull from chess.com? This cannot be undone.")) return;
+
+  const btnSync = document.getElementById("btnSync");
+  const btnWipe = document.getElementById("btnWipeSync");
+  btnSync.disabled = true; btnWipe.disabled = true;
+  const origLabel = wipe ? btnWipe.textContent : btnSync.textContent;
+  (wipe ? btnWipe : btnSync).textContent = "Syncing… (may take a minute)";
+
+  try {
+    const r = await fetch("/api/sync", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ password, wipe: !!wipe }),
+    });
+    const j = await r.json();
+    if (!r.ok) {
+      showSyncMsg(j.error || "sync failed", false);
+      btnSync.disabled = false; btnWipe.disabled = false;
+      (wipe ? btnWipe : btnSync).textContent = origLabel;
+      return;
+    }
+    showSyncMsg(`archives ${j.archives} · atomic ${j.atomic_games} · inserted ${j.inserted} · skipped ${j.skipped} · errors ${j.errors} · reloading…`);
+    sessionStorage.setItem(STORE_KEY_PW, password);
+    setTimeout(() => window.location.reload(), 1100);
+  } catch (e) {
+    showSyncMsg("network error", false);
+    btnSync.disabled = false; btnWipe.disabled = false;
+    (wipe ? btnWipe : btnSync).textContent = origLabel;
+  }
+}
+
+document.getElementById("btnSync").onclick = () => runSync(false);
+document.getElementById("btnWipeSync").onclick = () => runSync(true);
+
 document.getElementById("btnExportCsv").onclick = () => {
   if (!GAMES.length) { showMsg("no games to export", false); return; }
   const cols = Object.keys(GAMES[0]);
@@ -1060,7 +1115,11 @@ document.getElementById("navTabs").addEventListener("click", (e) => {
 // ---------- boot ----------
 (async function init() {
   const savedPw = sessionStorage.getItem(STORE_KEY_PW);
-  if (savedPw) document.getElementById("pw").value = savedPw;
+  if (savedPw) {
+    document.getElementById("pw").value = savedPw;
+    const pwSync = document.getElementById("pwSync");
+    if (pwSync) pwSync.value = savedPw;
+  }
   try { await fetchGames(); } catch(e) {
     document.getElementById("sub").textContent = "failed to load games";
   }
