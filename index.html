@@ -1067,9 +1067,14 @@ async function runSync(wipe) {
       (wipe ? btnWipe : btnSync).textContent = origLabel;
       return;
     }
-    showSyncMsg(`archives ${j.archives} · atomic ${j.atomic_games} · inserted ${j.inserted} · skipped ${j.skipped} · errors ${j.errors} · reloading…`);
+    const rulesStr = j.rules_seen ? Object.entries(j.rules_seen).map(([k,v]) => `${k}:${v}`).join(" ") : "";
+    showSyncMsg(
+      `archives ${j.archives} · total ${j.total_games} · atomic ${j.atomic_games} · inserted ${j.inserted} · skipped ${j.skipped} · errors ${j.errors}` +
+      (rulesStr ? ` — rules seen → ${rulesStr}` : "")
+    );
+    console.log("sync result", j);
     sessionStorage.setItem(STORE_KEY_PW, password);
-    setTimeout(() => window.location.reload(), 1100);
+    if (j.inserted > 0) setTimeout(() => window.location.reload(), 1500);
   } catch (e) {
     showSyncMsg("network error", false);
     btnSync.disabled = false; btnWipe.disabled = false;
