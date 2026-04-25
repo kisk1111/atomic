@@ -18,9 +18,17 @@ CREATE TABLE IF NOT EXISTS games (
   winner_name     TEXT,                    -- NULL if draw
   white_player    TEXT,
   black_player    TEXT,
+  pgn             TEXT,
+  chesscom_url    TEXT,
+  time_class      TEXT,                    -- 'bullet' | 'blitz' | 'rapid' | 'daily'
+  rated           BOOLEAN,
+  eco             TEXT,
+  source          TEXT,                    -- 'paste' | 'chesscom_api'
   created_at      TIMESTAMP NOT NULL DEFAULT NOW(),
   UNIQUE (played_at)
 );
 
 CREATE INDEX IF NOT EXISTS games_played_at_idx ON games (played_at DESC);
 CREATE INDEX IF NOT EXISTS games_opponent_idx  ON games (opponent_name);
+CREATE UNIQUE INDEX IF NOT EXISTS games_chesscom_url_uidx
+  ON games (chesscom_url) WHERE chesscom_url IS NOT NULL;

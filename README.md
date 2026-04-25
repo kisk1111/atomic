@@ -8,9 +8,12 @@ Postgres).
 
 - `index.html` — dashboard (static, fetches `/api/games`)
 - `api/games.js` — `GET /api/games`, returns all games as JSON
-- `api/upload.js` — `POST /api/upload`, password-gated, parses + inserts
+- `api/upload.js` — `POST /api/upload`, password-gated, parses pasted text + inserts
+- `api/sync.js` — `POST /api/sync`, password-gated, pulls every atomic game from
+  your chess.com archives via the public API and inserts new ones
 - `lib/parse.js` — shared parser for chess.com txt dumps
-- `schema.sql` — Postgres table definition
+- `schema.sql` — Postgres table definition (fresh installs)
+- `migrate.sql` — one-time alter for databases created before the sync feature
 - `convert.py` — optional local txt → csv converter (unchanged)
 - `games.txt` — your sample dump (unused by the web app)
 
@@ -22,6 +25,9 @@ Postgres).
 2. Create a project → you get a connection string like
    `postgresql://user:pass@host/db?sslmode=require`
 3. Open the **SQL Editor** and paste the contents of `schema.sql`, run it.
+   - If you already had a database from before the sync feature, run
+     `migrate.sql` instead — it adds the new columns (`pgn`, `chesscom_url`,
+     `time_class`, `rated`, `eco`, `source`) without touching existing rows.
 
 ### 2. Push this folder to GitHub
 
@@ -42,6 +48,7 @@ git push -u origin main
 4. In **Environment Variables** add:
    - `DATABASE_URL` → your Neon connection string
    - `UPLOAD_PASSWORD` → whatever password you want
+   - `CHESSCOM_USERNAME` → your chess.com handle (defaults to `w-a-s-u-k-e`)
 5. Deploy.
 
 (Alternatively: Vercel has a one-click Neon integration under **Storage** that
@@ -50,8 +57,20 @@ sets `DATABASE_URL` automatically.)
 ### 4. Use it
 
 - Public URL shows the dashboard.
-- Scroll to **Upload new games**, enter your password, paste chess.com blocks,
-  hit Submit. Server parses, dedupes on `(timestamp, opponent)`, and inserts.
+- Open the **Upload** tab and either:
+  - Enter your password and click **Sync** to pull every atomic game from your
+    chess.com archives via the public API. Safe to re-run — dedup is by
+    timestamp. Use **Wipe & resync** to truncate first if your data is messy.
+  - Or paste chess.com activity-feed blocks into the textarea and **Submit**.
+
+### Timezone wrinkle
+
+The chess.com API returns game times in UTC. The paste-upload flow stores the
+viewer's *local* time (the activity feed doesn't include a year, so we attach
+the upload-time year and the browser's local TZ). If you mix the two sources,
+the same physical game can land in the DB twice with timestamps that differ by
+your UTC offset. If you've already paste-uploaded games and want to switch to
+the API sync, hit **Wipe & resync** once for a clean slate.
 
 ## How winner/color is derived
 
