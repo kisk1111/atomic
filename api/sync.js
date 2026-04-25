@@ -144,6 +144,8 @@ export default async function handler(req, res) {
     const urls = archives.archives || [];
 
     let totalGames = 0, atomicCount = 0, inserted = 0, skipped = 0, errors = 0;
+    const rulesSeen = {};
+    const sampleAtomicLike = [];
 
     for (const url of urls) {
       let archive;
@@ -153,6 +155,18 @@ export default async function handler(req, res) {
       totalGames += games.length;
 
       for (const raw of games) {
+        const r = raw.rules || "(missing)";
+        rulesSeen[r] = (rulesSeen[r] || 0) + 1;
+        // Capture a few non-standard games verbatim so we can see the shape.
+        if (r !== "chess" && sampleAtomicLike.length < 3) {
+          sampleAtomicLike.push({
+            rules: raw.rules,
+            time_class: raw.time_class,
+            url: raw.url,
+            end_time: raw.end_time,
+          });
+        }
+
         const g = parseGame(raw);
         if (!g) continue;
         atomicCount++;
@@ -193,6 +207,8 @@ export default async function handler(req, res) {
       inserted,
       skipped,
       errors,
+      rules_seen: rulesSeen,
+      sample_non_standard: sampleAtomicLike,
     });
   } catch (e) {
     console.error("sync failed", e);
